@@ -1,8 +1,9 @@
 <template>
-  <v-container class="fill-height" max-width="900">
+  <!-- Test de Liderazgo -->
+  <v-container class="fill-height cover-page" max-width="1400">
     <v-card class="mx-auto glassmorphism-card" elevation="0" rounded="xl">
       <v-card-title class="text-center py-6">
-        <div class="text-h4 font-weight-bold text-white">
+        <div class="text-h4 font-weight-bold test-title">
           Test de Liderazgo
         </div>
       </v-card-title>
@@ -10,9 +11,12 @@
       <v-divider></v-divider>
 
       <v-card-text class="pa-6">
+        <v-row class="fill-height" no-gutters>
+          <!-- Columna izquierda: Test -->
+          <v-col cols="12" md="8" class="pr-md-4">
+            <div class="test-container">
         <!-- Instrucciones -->
         <v-alert
-          v-if="!testStarted"
           type="info"
           variant="tonal"
           class="mb-6"
@@ -31,34 +35,30 @@
           </div>
         </v-alert>
 
-        <!-- Botón para iniciar test -->
-        <div v-if="!testStarted" class="text-center">
-          <v-btn
-            color="primary"
-            size="large"
-            variant="elevated"
-            @click="startTest"
-            prepend-icon="mdi-play"
-            class="animated-btn pulse-btn"
-          >
-            Iniciar Test
-          </v-btn>
-        </div>
-
         <!-- Preguntas del test -->
         <div v-if="testStarted && !showResults">
-          <!-- Indicador de progreso -->
+          <!-- Indicador de progreso con corredor -->
+          <div class="progress-container mb-6">
+            <div 
+              class="progress-runner" 
+              :class="{ 'finished': progress >= 100 }"
+              :style="{ left: progress + '%' }"
+            >
+              {{ progress >= 100 ? '🌙' : '🚀' }}
+            </div>
           <v-progress-linear
             :model-value="progress"
             color="primary"
             height="6"
             rounded
-            class="mb-6"
+              class="progress-bar"
           ></v-progress-linear>
+          </div>
 
           <div class="text-center mb-4">
-            <v-chip color="primary" variant="tonal">
-              Pregunta {{ currentQuestion + 1 }} de {{ questions.length }}
+            <v-chip color="primary" variant="tonal" class="progress-chip">
+              <v-icon class="mr-2" size="small">mdi-chart-line</v-icon>
+              {{ Math.round(progress) }}% Completado
             </v-chip>
           </div>
 
@@ -117,13 +117,13 @@
             <v-btn
               v-if="currentQuestion < questions.length - 1"
               :disabled="answers[currentQuestion] === null"
-              color="primary"
+              :color="answers[currentQuestion] === null ? 'grey' : 'primary'"
               variant="elevated"
-              @click="nextQuestion"
-              append-icon="mdi-chevron-right"
+              @click="handleNextClick"
+              :append-icon="answers[currentQuestion] === null ? 'mdi-lock' : 'mdi-chevron-right'"
               class="animated-btn slide-right"
             >
-              Siguiente
+              {{ answers[currentQuestion] === null ? 'Responde para continuar' : 'Siguiente' }}
             </v-btn>
 
             <v-btn
@@ -254,19 +254,131 @@
             </v-btn>
           </div>
         </div>
+            </div>
+          </v-col>
+
+          <!-- Columna derecha: Lista de respuestas -->
+          <v-col cols="12" md="4" class="pl-md-4">
+            <div class="answers-container">
+              <v-card class="glassmorphism-answers" elevation="0" rounded="xl">
+                <v-card-title class="text-center py-4">
+                  <div class="text-h6 font-weight-bold answers-title">
+                    <span class="mr-2">📋</span>
+                    Respuestas
+                  </div>
+                </v-card-title>
+                
+                <v-divider class="mx-4"></v-divider>
+                
+                <v-card-text class="pa-4">
+                  <div v-if="!testStarted" class="text-center py-8">
+                    <v-icon size="48" color="grey-lighten-1" class="mb-4">mdi-help-circle-outline</v-icon>
+                    <div class="text-body-1 text-grey-lighten-1">
+                      Inicia el test para ver las respuestas
+                    </div>
+                  </div>
+                  
+                  <div v-else>
+                    <!-- Mensaje informativo -->
+                    <v-alert
+                      :type="answeredQuestionsCount > 0 ? 'success' : 'info'"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      <v-alert-title class="text-caption">
+                        {{ answeredQuestionsCount > 0 ? '🎉 Progreso' : '🚀 ¡Comienza!' }}
+                      </v-alert-title>
+                      <div class="text-caption">
+                        {{ answeredQuestionsCount > 0 
+                          ? `Has respondido ${answeredQuestionsCount} de ${questions.length} preguntas`
+                          : 'Responde tu primera pregunta para ver tu progreso aquí'
+                        }}
+                      </div>
+                    </v-alert>
+                    
+                    <div v-if="answeredQuestionsCount === 0" class="text-center py-8">
+                      <v-icon size="48" color="grey-lighten-1" class="mb-4">mdi-help-circle-outline</v-icon>
+                      <div class="text-body-1 text-grey-lighten-1">
+                        Tus respuestas aparecerán aquí
+                      </div>
+                    </div>
+                    
+                    <div v-else class="answers-list">
+                      <div
+                      v-for="(question, index) in answeredQuestions"
+                      :key="question.index"
+                      :class="[
+                        'answer-item',
+                        'mb-2',
+                        'pa-3',
+                        'rounded-lg',
+                        'cursor-pointer',
+                        'transition-all',
+                        {
+                          'answered': true,
+                          'current': question.index === currentQuestion,
+                          'selected': selectedAnswerIndex === question.index
+                        }
+                      ]"
+                      @click="editAnswer(question.index)"
+                    >
+                      <div class="d-flex align-center">
+                        <v-chip
+                          :color="getAnswerColor(question.index)"
+                          size="small"
+                          class="mr-3"
+                        >
+                          {{ question.index + 1 }}
+                        </v-chip>
+                        
+                        <div class="flex-grow-1">
+                          <div class="text-body-2 font-weight-medium mb-1">
+                            {{ question.text.length > 50 ? question.text.substring(0, 50) + '...' : question.text }}
+                          </div>
+                          
+                          <div class="d-flex align-center">
+                            <span 
+                              class="answer-emoji mr-2"
+                              :style="{ fontSize: '1.2rem' }"
+                            >
+                              {{ getAnswerIcon(answers[question.index] as number) }}
+                            </span>
+                            <span class="text-caption text-grey-lighten-1">
+                              {{ getAnswerText(answers[question.index] as number) }}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <span
+                          v-if="question.index === currentQuestion"
+                          class="current-indicator"
+                        >
+                          ➡️
+                        </span>
+                      </div>
+                    </div>
+          </div>
+        </div>
+                </v-card-text>
+              </v-card>
+            </div>
+          </v-col>
+        </v-row>
       </v-card-text>
     </v-card>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 // Estado del test
-const testStarted = ref(false)
+const testStarted = ref(true) // Siempre iniciado en la página del test
 const showResults = ref(false)
 const currentQuestion = ref(0)
 const answers = ref<(number | null)[]>(Array(18).fill(null))
+const selectedAnswerIndex = ref<number | null>(null)
 
 // Generar opciones especiales aleatorias para cada pregunta
 const specialOptions = ref<number[]>([])
@@ -276,6 +388,23 @@ const initializeSpecialOptions = () => {
   specialOptions.value = Array(18).fill(0).map(() => Math.floor(Math.random() * 5) + 1)
   console.log('🎲 Opciones especiales generadas:', specialOptions.value)
 }
+
+// Inicializar el test automáticamente al cargar el componente
+onMounted(() => {
+  initializeSpecialOptions()
+  
+  // Mostrar alerta de bienvenida
+  setTimeout(() => {
+    const alertData = {
+      title: '✨ ¡Comencemos!',
+      message: 'Responde cada pregunta con honestidad basándote en tu experiencia personal y profesional. No hay respuestas correctas o incorrectas, simplemente refleja tu estilo de liderazgo actual.',
+      emoji: '',
+      color: 'primary',
+      duration: 4500
+    }
+    createProgressAlert(alertData)
+  }, 500)
+})
 
 // Opciones de calificación con colores y emojis
 const ratingOptions = [
@@ -355,9 +484,24 @@ const allQuestionsAnswered = computed(() => {
   return answers.value.every(answer => answer !== null)
 })
 
+const answeredQuestionsCount = computed(() => {
+  return answers.value.filter(answer => answer !== null).length
+})
+
+const answeredQuestions = computed(() => {
+  return questions.map((question, index) => ({ ...question, index }))
+    .filter((_, index) => answers.value[index] !== null)
+    .sort((a, b) => b.index - a.index) // Ordenar de más reciente a más antigua
+})
+
 // Métodos
+// Función para iniciar el test
 const startTest = () => {
   testStarted.value = true
+  showResults.value = false
+  currentQuestion.value = 0
+  answers.value = Array(18).fill(null)
+  selectedAnswerIndex.value = null
   
   // Inicializar opciones especiales
   initializeSpecialOptions()
@@ -378,6 +522,9 @@ const startTest = () => {
 const selectOption = (value: number) => {
   // Asegurar que la respuesta se guarde correctamente
   answers.value[currentQuestion.value] = value
+  
+  // Limpiar la selección en la lista de respuestas
+  selectedAnswerIndex.value = null
   
   // Forzar la reactividad para que Vue actualice la UI
   answers.value = [...answers.value]
@@ -599,9 +746,19 @@ const isSelected = (optionValue: number) => {
   return answers.value[currentQuestion.value] === optionValue
 }
 
+const handleNextClick = () => {
+  if (answers.value[currentQuestion.value] === null) {
+    // Mostrar alerta cuando intente avanzar sin responder
+    showAnswerRequiredAlert()
+    return
+  }
+  nextQuestion()
+}
+
 const nextQuestion = () => {
-  if (currentQuestion.value < questions.length - 1) {
+  if (currentQuestion.value < questions.length - 1 && answers.value[currentQuestion.value] !== null) {
     currentQuestion.value++
+    selectedAnswerIndex.value = null
     
     // Ya no necesitamos alertas automáticas de mitad y final
     // Los efectos especiales ahora son aleatorios por pregunta
@@ -611,6 +768,7 @@ const nextQuestion = () => {
 const previousQuestion = () => {
   if (currentQuestion.value > 0) {
     currentQuestion.value--
+    selectedAnswerIndex.value = null
   }
 }
 
@@ -690,6 +848,7 @@ const resetTest = () => {
   showResults.value = false
   currentQuestion.value = 0
   answers.value = Array(18).fill(null)
+  selectedAnswerIndex.value = null
   results.value = {
     peopleLeadership: 0,
     taskLeadership: 0,
@@ -699,283 +858,316 @@ const resetTest = () => {
   // Reinicializar opciones especiales para un nuevo test
   specialOptions.value = []
 }
+
+// Métodos para manejar la lista de respuestas
+const editAnswer = (index: number) => {
+  if (testStarted.value && !showResults.value) {
+    // Si la pregunta actual no está respondida, mostrar alerta
+    if (answers.value[currentQuestion.value] === null && index !== currentQuestion.value) {
+      showAnswerRequiredAlert()
+      return
+    }
+    
+    currentQuestion.value = index
+    selectedAnswerIndex.value = index
+  }
+}
+
+const getAnswerColor = (index: number) => {
+  if (index === currentQuestion.value) return 'primary'
+  if (answers.value[index] !== null) return 'success'
+  return 'grey'
+}
+
+const getAnswerIcon = (value: number) => {
+  const option = ratingOptions.find(opt => opt.value === value)
+  switch (value) {
+    case 1: return '😡'
+    case 2: return '😕'
+    case 3: return '😐'
+    case 4: return '😊'
+    case 5: return '😍'
+    default: return '❓'
+  }
+}
+
+const getAnswerText = (value: number) => {
+  const option = ratingOptions.find(opt => opt.value === value)
+  return option ? option.shortLabel : 'Sin respuesta'
+}
+
+// Función para mostrar alerta cuando intente avanzar sin responder
+const showAnswerRequiredAlert = () => {
+  const alertData = {
+    title: '🔒 Respuesta Requerida',
+    message: 'Por favor selecciona una opción antes de continuar a la siguiente pregunta. Es importante que respondas todas las preguntas para obtener un análisis preciso de tu estilo de liderazgo.',
+    emoji: '⚠️',
+    color: 'warning',
+    duration: 4000
+  }
+  
+  createProgressAlert(alertData)
+  
+  // Efecto visual en las tarjetas de rating para llamar la atención
+  const ratingCards = document.querySelectorAll('.rating-card')
+  ratingCards.forEach((card, index) => {
+    const htmlCard = card as HTMLElement
+    setTimeout(() => {
+      htmlCard.style.transform = 'scale(1.05)'
+      htmlCard.style.boxShadow = '0 8px 25px rgba(255, 193, 7, 0.4)'
+      
+      setTimeout(() => {
+        htmlCard.style.transform = 'scale(1)'
+        htmlCard.style.boxShadow = ''
+      }, 300)
+    }, index * 100)
+  })
+}
 </script>
 
 <style scoped>
-.v-card {
-  transition: all 0.3s ease;
+/* Estilos para el test de liderazgo */
+.cover-page {
+  background: radial-gradient(circle at center, #381B7C 0%, #000005 100%);
+  min-height: 100vh;
 }
 
-.v-progress-linear {
-  transition: all 0.5s ease;
-}
-
-/* Estilos de texto que se adaptan correctamente al tema */
-.theme--light .text-content {
-  color: #000000 !important;
-}
-
-.theme--dark .text-content {
-  color: #ffffff !important;
-}
-
-/* Para el nuevo sistema de temas de Vuetify 3 */
-.v-theme--light .text-content {
-  color: #000000 !important;
-}
-
-.v-theme--dark .text-content {
-  color: #ffffff !important;
-}
-
-/* Estilos específicos para diferentes elementos */
-.v-theme--light .question-text {
-  color: #212121 !important;
-}
-
-.v-theme--dark .question-text {
-  color: #ffffff !important;
-}
-
-.v-theme--light .option-number {
-  color: #000000 !important;
-}
-
-.v-theme--dark .option-number {
-  color: #ffffff !important;
-}
-
-.v-theme--light .option-label {
-  color: #424242 !important;
-}
-
-.v-theme--dark .option-label {
-  color: #e0e0e0 !important;
-}
-
-.rating-card {
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 2px solid transparent;
-}
-
-.rating-card:hover {
-  transform: translateY(-2px);
-}
-
-.rating-card.selected {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(var(--v-theme-primary), 0.3) !important;
-  border: 2px solid rgb(var(--v-theme-primary)) !important;
-}
-
-.cursor-pointer {
-  cursor: pointer;
-}
-
-.transition-all {
-  transition: all 0.3s ease;
-}
-
-.rating-cards .v-row {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: space-between;
-}
-
-.question-card {
-  max-width: 800px;
-}
-
-.rating-cards .v-col {
-  flex: 1 1 auto;
-  max-width: calc(20% - 8px);
-  min-width: 0;
-}
-
-.rating-card {
-  min-height: 120px;
-  width: 100%;
-}
-
-@media (max-width: 960px) {
-  .question-card {
-    max-width: 700px;
-  }
-  
-  .rating-card {
-    min-height: 100px;
-    width: 100%;
-  }
-  
-  .rating-card .text-h5 {
-    font-size: 1.25rem !important;
-  }
-  
-  .rating-card .text-h6 {
-    font-size: 1rem !important;
-  }
-  
-  .rating-card .text-caption {
-    font-size: 0.7rem !important;
-    line-height: 1.2;
-  }
-}
-
-@media (max-width: 600px) {
-  .question-card {
-    max-width: 100%;
-    margin: 0 8px;
-  }
-  
-  .rating-card {
-    min-height: 80px;
-    width: 100%;
-    padding: 4px !important;
-  }
-  
-  .rating-card .text-h5 {
-    font-size: 1rem !important;
-  }
-  
-  .rating-card .text-h6 {
-    font-size: 0.875rem !important;
-  }
-  
-  .rating-card .text-caption {
-    font-size: 0.6rem !important;
-    line-height: 1.1;
-  }
-}
-
-/* Glassmorphism para la tarjeta principal - Rosa */
+/* Glassmorphism para tarjetas principales */
 .glassmorphism-card {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 182, 193, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(233, 30, 99, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 32px 0 rgba(56, 27, 124, 0.3),
+    0 4px 16px 0 rgba(0, 0, 5, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
 }
 
 .v-theme--dark .glassmorphism-card {
-  background: rgba(233, 30, 99, 0.1) !important;
-  border: 1px solid rgba(233, 30, 99, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(233, 30, 99, 0.2);
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 8px 32px 0 rgba(56, 27, 124, 0.4),
+    0 4px 16px 0 rgba(0, 0, 5, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* Glassmorphism para tarjetas de preguntas - Rosa */
+/* Glassmorphism para tarjetas de preguntas */
 .glassmorphism-question {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 182, 193, 0.4);
-  box-shadow: 0 4px 16px 0 rgba(233, 30, 99, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 6px 24px 0 rgba(56, 27, 124, 0.25),
+    0 3px 12px 0 rgba(0, 0, 5, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
 }
 
 .v-theme--dark .glassmorphism-question {
-  background: rgba(233, 30, 99, 0.08) !important;
-  border: 1px solid rgba(233, 30, 99, 0.25);
-  box-shadow: 0 4px 16px 0 rgba(233, 30, 99, 0.15);
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 6px 24px 0 rgba(56, 27, 124, 0.35),
+    0 3px 12px 0 rgba(0, 0, 5, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* Glassmorphism para tarjetas de resultados - Rosa */
+/* Glassmorphism para tarjetas de resultados */
 .glassmorphism-result {
-  background: rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 182, 193, 0.4);
-  box-shadow: 0 4px 16px 0 rgba(233, 30, 99, 0.2);
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 4px 16px 0 rgba(56, 27, 124, 0.2),
+    0 2px 8px 0 rgba(0, 0, 5, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .glassmorphism-result:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px 0 rgba(233, 30, 99, 0.3);
-  border: 1px solid rgba(255, 64, 129, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px 0 rgba(56, 27, 124, 0.3),
+    0 3px 10px 0 rgba(0, 0, 5, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .v-theme--dark .glassmorphism-result {
-  background: rgba(233, 30, 99, 0.1) !important;
-  border: 1px solid rgba(233, 30, 99, 0.3);
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 4px 16px 0 rgba(56, 27, 124, 0.3),
+    0 2px 8px 0 rgba(0, 0, 5, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .v-theme--dark .glassmorphism-result:hover {
-  box-shadow: 0 8px 25px 0 rgba(233, 30, 99, 0.3);
-  border: 1px solid rgba(233, 30, 99, 0.5);
+  box-shadow: 
+    0 6px 20px 0 rgba(56, 27, 124, 0.4),
+    0 3px 10px 0 rgba(0, 0, 5, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Glassmorphism para interpretación - Rosa */
+/* Glassmorphism para interpretación */
 .glassmorphism-interpretation {
-  background: rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 182, 193, 0.4);
-  box-shadow: 0 4px 16px 0 rgba(233, 30, 99, 0.2);
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 5px 20px 0 rgba(56, 27, 124, 0.22),
+    0 2px 10px 0 rgba(0, 0, 5, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
 }
 
 .v-theme--dark .glassmorphism-interpretation {
-  background: rgba(233, 30, 99, 0.08) !important;
-  border: 1px solid rgba(233, 30, 99, 0.25);
-  box-shadow: 0 4px 16px 0 rgba(233, 30, 99, 0.15);
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 5px 20px 0 rgba(56, 27, 124, 0.32),
+    0 2px 10px 0 rgba(0, 0, 5, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* Actualizar estilos de rating-card para glassmorphism - Rosa */
+/* Glassmorphism para lista de respuestas */
+.glassmorphism-answers {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 8px 32px 0 rgba(56, 27, 124, 0.18),
+    0 4px 16px 0 rgba(0, 0, 5, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.v-theme--dark .glassmorphism-answers {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 8px 32px 0 rgba(56, 27, 124, 0.25),
+    0 4px 16px 0 rgba(0, 0, 5, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Glassmorphism para tarjetas de rating */
 .rating-card {
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 182, 193, 0.3) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    0 4px 12px 0 rgba(56, 27, 124, 0.2),
+    0 2px 6px 0 rgba(0, 0, 5, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
   min-height: 120px;
   width: 100%;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .rating-card:hover:not(.selected) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(233, 30, 99, 0.1);
-  background: rgba(255, 192, 203, 0.2) !important;
-  border: 1px solid rgba(255, 64, 129, 0.4) !important;
+  box-shadow: 
+    0 6px 16px 0 rgba(56, 27, 124, 0.3),
+    0 3px 8px 0 rgba(0, 0, 5, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: rgba(255, 255, 255, 1);
 }
 
 .rating-card.selected {
-  transform: translateY(-4px) !important;
-  box-shadow: 0 12px 30px rgba(var(--v-theme-primary), 0.4) !important;
-  border: 2px solid rgb(var(--v-theme-primary)) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 
+    0 8px 20px 0 rgba(56, 27, 124, 0.4),
+    0 4px 10px 0 rgba(0, 0, 5, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.5) !important;
   z-index: 2;
-  background: rgba(var(--v-theme-primary), 0.2) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: rgba(255, 255, 255, 1);
 }
 
 .v-theme--dark .rating-card {
-  border: 1px solid rgba(233, 30, 99, 0.3) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    0 4px 12px 0 rgba(56, 27, 124, 0.3),
+    0 2px 6px 0 rgba(0, 0, 5, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .v-theme--dark .rating-card:hover:not(.selected) {
-  box-shadow: 0 8px 25px rgba(233, 30, 99, 0.2);
-  background: rgba(233, 30, 99, 0.1) !important;
-  border: 1px solid rgba(233, 30, 99, 0.4) !important;
+  box-shadow: 
+    0 6px 16px 0 rgba(56, 27, 124, 0.4),
+    0 3px 8px 0 rgba(0, 0, 5, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.95);
 }
 
-/* Gradientes rosa para elementos especiales */
-.pink-gradient {
-  background: linear-gradient(135deg, #E91E63 0%, #F06292 100%);
+.v-theme--dark .rating-card.selected {
+  box-shadow: 
+    0 8px 20px 0 rgba(56, 27, 124, 0.5),
+    0 4px 10px 0 rgba(0, 0, 5, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 1);
 }
 
-.v-theme--dark .pink-gradient {
-  background: linear-gradient(135deg, #F48FB1 0%, #F8BBD9 100%);
+/* Estilos para títulos */
+.test-title, .answers-title {
+  color: #837B6B !important;
 }
 
-/* Efectos de brillo rosa */
-.pink-glow {
-  box-shadow: 0 0 20px rgba(233, 30, 99, 0.3);
-  transition: all 0.3s ease;
+.v-theme--dark .test-title, .v-theme--dark .answers-title {
+  color: #F5CB84 !important;
 }
 
-.pink-glow:hover {
-  box-shadow: 0 0 30px rgba(233, 30, 99, 0.5);
-}
-
-/* Animaciones para botones */
+/* Estilos para botones animados */
 .animated-btn {
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(156, 39, 176, 0.4),
+    0 4px 16px 0 rgba(233, 30, 99, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 40px rgba(233, 30, 99, 0.2) !important;
+  transition: all 0.3s ease !important;
   position: relative;
   overflow: hidden;
 }
@@ -983,362 +1175,188 @@ const resetTest = () => {
 .animated-btn::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s ease;
 }
 
 .animated-btn:hover::before {
-  width: 300px;
-  height: 300px;
+  left: 100%;
 }
 
-/* Animación de pulso para botón inicial */
-.pulse-btn {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(233, 30, 99, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(233, 30, 99, 0);
-  }
-}
-
-/* Animación de deslizamiento izquierda */
-.slide-left:hover {
-  transform: translateX(-5px);
-  box-shadow: 5px 5px 15px rgba(233, 30, 99, 0.3);
-}
-
-/* Animación de deslizamiento derecha */
-.slide-right:hover {
-  transform: translateX(5px);
-  box-shadow: -5px 5px 15px rgba(233, 30, 99, 0.3);
-}
-
-/* Animación de rebote para finalizar */
-.bounce-btn:hover {
-  animation: bounce 0.6s;
-}
-
-@keyframes bounce {
-  0%, 20%, 60%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-10px);
-  }
-  80% {
-    transform: translateY(-5px);
-  }
-}
-
-/* Animación de rotación para reiniciar */
-.rotate-btn:hover {
-  transform: rotate(360deg);
-  transition: transform 0.8s ease-in-out;
-}
-
-.rotate-btn .v-icon {
-  transition: transform 0.8s ease-in-out;
-}
-
-.rotate-btn:hover .v-icon {
-  transform: rotate(360deg);
-}
-
-/* Efectos adicionales para botones */
 .animated-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(233, 30, 99, 0.3);
+  transform: translateY(-3px) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 
+    0 12px 40px 0 rgba(156, 39, 176, 0.5),
+    0 6px 20px 0 rgba(233, 30, 99, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 60px rgba(233, 30, 99, 0.3) !important;
 }
 
-.animated-btn:active {
-  transform: translateY(0);
-  transition: all 0.1s;
+/* Estilos para chips de progreso */
+.progress-chip {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
-/* Efectos para botones deshabilitados */
-.animated-btn:disabled {
-  opacity: 0.5;
-  transform: none !important;
-  animation: none !important;
+/* Estilos para elementos de respuestas */
+.answer-item {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.3s ease;
 }
 
-.animated-btn:disabled:hover {
-  transform: none !important;
-  box-shadow: none !important;
+.answer-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
 
-/* Animación de carga para botones */
-.animated-btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.3);
+.answer-item.current {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Efectos especiales para modo dark */
-.v-theme--dark .animated-btn:hover {
-  box-shadow: 0 8px 25px rgba(233, 30, 99, 0.3);
+.answer-item.selected {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.5);
 }
 
-.v-theme--dark .pulse-btn {
-  animation: pulseDark 2s infinite;
+/* Estilos para emojis de respuestas */
+.answer-emoji {
+  font-size: 1.2rem;
 }
 
-@keyframes pulseDark {
-  0% {
-    box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(233, 30, 99, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(233, 30, 99, 0);
-  }
+.current-indicator {
+  font-size: 1.2rem;
+  margin-left: 0.5rem;
 }
 
-/* Alertas de progreso y emojis gigantes se manejan via JavaScript */
-
-/* Explosión de emojis */
-.rating-cards {
+/* Estilos para la barra de progreso */
+.progress-container {
   position: relative;
-  overflow: visible !important;
+  margin-bottom: 2rem;
 }
 
-.rating-cards .v-row {
-  position: relative;
-  overflow: visible !important;
-}
-
-.rating-cards .v-col {
-  position: relative;
-  overflow: visible !important;
-}
-
-.emoji-explosion {
-  position: fixed;
-  font-size: 24px;
-  pointer-events: none;
-  z-index: 9999;
-  animation: emojiExplosion var(--duration, 3s) ease-out forwards;
-  user-select: none;
-  transform: translate(-50%, -50%);
-}
-
-@keyframes emojiExplosion {
-  0% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(var(--scale, 1)) rotate(var(--rotation, 0deg));
-  }
-  5% {
-    opacity: 1;
-    transform: translate(calc(-50% + var(--vx) * 0.1), calc(-50% + var(--vy) * 0.1)) scale(calc(var(--scale, 1) * 1.8)) rotate(calc(var(--rotation, 0deg) + 45deg));
-  }
-  15% {
-    opacity: 1;
-    transform: translate(calc(-50% + var(--vx) * 0.3), calc(-50% + var(--vy) * 0.3)) scale(calc(var(--scale, 1) * 1.4)) rotate(calc(var(--rotation, 0deg) + 120deg));
-  }
-  40% {
-    opacity: 1;
-    transform: translate(calc(-50% + var(--vx) * 0.6), calc(-50% + var(--vy) * 0.6)) scale(calc(var(--scale, 1) * 1.2)) rotate(calc(var(--rotation, 0deg) + 240deg));
-  }
-  70% {
-    opacity: 0.9;
-    transform: translate(calc(-50% + var(--vx) * 0.85), calc(-50% + var(--vy) * 0.85)) scale(calc(var(--scale, 1) * 1)) rotate(calc(var(--rotation, 0deg) + 300deg));
-  }
-  90% {
-    opacity: 0.5;
-    transform: translate(calc(-50% + var(--vx) * 1), calc(-50% + var(--vy) * 1 + 100px)) scale(calc(var(--scale, 1) * 0.8)) rotate(calc(var(--rotation, 0deg) + 360deg));
-  }
-  100% {
-    opacity: 0;
-    transform: translate(calc(-50% + var(--vx) * 1.1), calc(-50% + var(--vy) * 1.1 + 200px)) scale(calc(var(--scale, 1) * 0.2)) rotate(calc(var(--rotation, 0deg) + 420deg));
-  }
-}
-
-/* Efecto adicional de brillo para emojis */
-.emoji-explosion::before {
-  content: '';
+.progress-runner {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 30px;
-  height: 30px;
-  background: radial-gradient(circle, rgba(233, 30, 99, 0.3) 0%, transparent 70%);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  animation: emojiGlow 2s ease-out;
-  z-index: -1;
+  top: -12px;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+  z-index: 2;
+  transition: left 0.3s ease;
 }
 
-@keyframes emojiGlow {
-  0% {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 1;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(2);
-    opacity: 0.5;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(3);
-    opacity: 0;
-  }
+.progress-runner.finished {
+  animation: bounce 1s ease-in-out infinite alternate;
 }
 
-/* Variaciones de explosión por tipo de emoji */
-.emoji-explosion:nth-child(odd) {
-  animation-duration: 1.8s;
+.progress-bar {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.emoji-explosion:nth-child(even) {
-  animation-duration: 2.2s;
+/* Animaciones */
+@keyframes bounce {
+  0% { transform: translateX(-50%) translateY(0px); }
+  100% { transform: translateX(-50%) translateY(-10px); }
 }
 
-.emoji-explosion:nth-child(3n) {
-  animation-delay: 0.1s;
+.slide-left {
+  animation: slideLeft 0.3s ease-out;
 }
 
-.emoji-explosion:nth-child(4n) {
-  animation-delay: 0.2s;
+.slide-right {
+  animation: slideRight 0.3s ease-out;
 }
 
-/* Efectos especiales para diferentes emojis */
-.emoji-explosion:contains('😍') {
-  animation-duration: 2.5s;
-  filter: drop-shadow(0 0 10px rgba(255, 105, 180, 0.8));
+.bounce-btn {
+  animation: bounceIn 0.5s ease-out;
 }
 
-.emoji-explosion:contains('😊') {
-  animation-duration: 2.3s;
-  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+@keyframes slideLeft {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
-.emoji-explosion:contains('😐') {
-  animation-duration: 2.0s;
-  filter: drop-shadow(0 0 6px rgba(128, 128, 128, 0.4));
+@keyframes slideRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
-.emoji-explosion:contains('😕') {
-  animation-duration: 1.9s;
-  filter: drop-shadow(0 0 8px rgba(255, 140, 0, 0.6));
+@keyframes bounceIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-.emoji-explosion:contains('😡') {
-  animation-duration: 1.7s;
-  filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
+/* Efectos de texto */
+.question-text {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  line-height: 1.6;
 }
 
-/* Onda de choque */
-.shock-wave {
-  position: fixed;
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(233, 30, 99, 0.6);
-  border-radius: 50%;
-  pointer-events: none;
-  animation: shockWave 1s ease-out forwards;
-  transform: translate(-50%, -50%);
-  z-index: 9998;
+.text-content {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
 }
 
-@keyframes shockWave {
-  0% {
-    width: 20px;
-    height: 20px;
-    opacity: 1;
-    border-width: 4px;
-    border-color: rgba(233, 30, 99, 0.8);
-  }
-  25% {
-    width: 300px;
-    height: 300px;
-    opacity: 0.8;
-    border-width: 3px;
-    border-color: rgba(233, 30, 99, 0.6);
-  }
-  50% {
-    width: 800px;
-    height: 800px;
-    opacity: 0.5;
-    border-width: 2px;
-    border-color: rgba(233, 30, 99, 0.4);
-  }
-  75% {
-    width: 1200px;
-    height: 1200px;
-    opacity: 0.2;
-    border-width: 1px;
-    border-color: rgba(233, 30, 99, 0.2);
-  }
-  100% {
-    width: 1600px;
-    height: 1600px;
-    opacity: 0;
-    border-width: 1px;
-    border-color: rgba(233, 30, 99, 0.1);
-  }
-}
-
-/* Efectos adicionales para diferentes valores */
-.rating-card.selected::after {
-  content: '';
+/* Efectos de polvo para el cohete */
+.progress-runner::after {
+  content: '✨';
   position: absolute;
+  right: -30px;
   top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle, rgba(233, 30, 99, 0.2) 0%, transparent 70%);
-  border-radius: inherit;
-  transform: translate(-50%, -50%);
-  animation: cardGlow 0.6s ease-out;
-  pointer-events: none;
-  z-index: -1;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  opacity: 0.7;
+  animation: sparkle 1s ease-in-out infinite alternate;
 }
 
-@keyframes cardGlow {
-  0% {
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0;
+@keyframes sparkle {
+  0% { opacity: 0.3; transform: translateY(-50%) scale(0.8); }
+  100% { opacity: 0.8; transform: translateY(-50%) scale(1.2); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .glassmorphism-card {
+    margin: 1rem;
   }
-  50% {
-    transform: translate(-50%, -50%) scale(1.2);
-    opacity: 1;
+  
+  .rating-card {
+    min-height: 100px;
   }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
+  
+  .progress-runner {
+    font-size: 1.2rem;
   }
 }
 
-/* Vibración para la tarjeta seleccionada */
-.rating-card.selected {
-  animation: cardVibrate 0.3s ease-in-out;
-}
-
-@keyframes cardVibrate {
-  0%, 100% {
-    transform: translateY(-4px);
+@media (max-width: 480px) {
+  .glassmorphism-card {
+    margin: 0.5rem;
   }
-  25% {
-    transform: translateY(-4px) translateX(-2px);
+  
+  .rating-card {
+    min-height: 80px;
   }
-  50% {
-    transform: translateY(-4px) translateX(2px);
-  }
-  75% {
-    transform: translateY(-4px) translateX(-1px);
+  
+  .progress-runner {
+    font-size: 1rem;
   }
 }
 </style>

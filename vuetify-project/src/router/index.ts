@@ -1,12 +1,33 @@
 /**
  * router/index.ts
  *
- * Automatic routes for `./src/pages/*.vue`
+ * Manual routes for the leadership test application
  */
 
 // Composables
 import { createRouter, createWebHistory } from 'vue-router'
-import { routes } from 'vue-router/auto-routes'
+
+const routes = [
+  {
+    path: '/',
+    redirect: '/welcome'
+  },
+  {
+    path: '/welcome',
+    name: 'welcome',
+    component: () => import('@/pages/cover.vue')
+  },
+  {
+    path: '/instructions',
+    name: 'instructions',
+    component: () => import('@/pages/instructions.vue')
+  },
+  {
+    path: '/test',
+    name: 'test',
+    component: () => import('@/pages/test.vue')
+  }
+]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

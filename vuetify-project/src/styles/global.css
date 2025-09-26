@@ -1,8 +1,17 @@
-/* Estilos globales simplificados para el fondo rosa */
+/* Estilos globales con fondo radial unificado */
 
-/* Solo aplicar fondo al body */
+/* Aplicar fondo radial a todos los elementos principales */
+html, body, #app, .v-application {
+  background: radial-gradient(circle at center, #381B7C 0%, #000005 100%) !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  min-height: 100vh !important;
+}
+
+/* Fondo específico para body */
 body.v-theme--light {
-  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fad0c4 100%) !important;
+  background: radial-gradient(circle at center, #381B7C 0%, #000005 100%) !important;
   background-attachment: fixed !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
@@ -10,7 +19,14 @@ body.v-theme--light {
 }
 
 body.v-theme--dark {
-  background: #000000 !important;
+  background: radial-gradient(circle at center, #381B7C 0%, #000005 100%) !important;
   background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
   min-height: 100vh !important;
+}
+
+/* Asegurar que el contenedor principal también tenga el fondo */
+.v-application .v-main {
+  background: transparent !important;
 }
